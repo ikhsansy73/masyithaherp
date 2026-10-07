@@ -19,6 +19,7 @@ use App\Services\Billing\StudentFeeService;
 use App\Services\Shared\DocumentSequenceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 /**
  * PPDB write path (doc 06 §2). Status flow:
@@ -225,7 +226,7 @@ class PpdbService
                     'is_active' => true,
                 ]);
 
-                $createdUser->assignRole('wali_murid');
+                $createdUser->assignRole(Role::findOrCreate('wali_murid', 'web'));
             }
 
             if ($createdUser !== null) {

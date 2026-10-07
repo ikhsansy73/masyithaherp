@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\EnrollmentStatus;
+use App\Models\Concerns\ScopedToOwnClassrooms;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use InvalidArgumentException;
 class Classroom extends Model
 {
     /** @use HasFactory<\Database\Factories\ClassroomFactory> */
-    use HasFactory;
+    use HasFactory, ScopedToOwnClassrooms;
 
     protected $fillable = [
         'academic_year_id',
