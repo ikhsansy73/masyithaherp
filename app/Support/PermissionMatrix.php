@@ -30,6 +30,7 @@ class PermissionMatrix
         static::crud($matrix, 'accounting.coa', full: ['bendahara'], view: ['kepala_sekolah']);
         static::crud($matrix, 'accounting.journal', full: ['bendahara'], view: ['kepala_sekolah']);
         static::crud($matrix, 'accounting.period', full: ['bendahara'], view: ['kepala_sekolah']);
+        static::action($matrix, 'accounting.period.reopen', ['super_admin']);
         static::action($matrix, 'accounting.report.view', ['kepala_sekolah', 'bendahara']);
         static::crud($matrix, 'billing.fee', full: ['bendahara'], view: ['kepala_sekolah', 'operator_tu']);
         static::crud($matrix, 'billing.batch', full: ['bendahara']);
