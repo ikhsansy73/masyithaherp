@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EnrollmentStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -64,6 +65,18 @@ class Classroom extends Model
     public function enrollments(): HasMany
     {
         return $this->hasMany(StudentEnrollment::class);
+    }
+
+    /**
+     * Enrollments currently active in this classroom (same year).
+     *
+     * @return HasMany<StudentEnrollment, $this>
+     */
+    public function activeEnrollments(): HasMany
+    {
+        return $this->enrollments()
+            ->where('status', EnrollmentStatus::Aktif)
+            ->where('academic_year_id', $this->academic_year_id);
     }
 
     /**
