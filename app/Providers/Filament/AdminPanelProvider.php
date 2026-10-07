@@ -3,6 +3,8 @@
 namespace App\Providers\Filament;
 
 use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
+use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
+use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -41,9 +43,14 @@ class AdminPanelProvider extends PanelProvider
                 'Operasional',
                 'Pengaturan',
             ])
-            ->plugin(AuthDesignerPlugin::make()
-                ->login()
-                ->themeToggle())
+            ->plugin(
+                AuthDesignerPlugin::make()
+                    ->login(fn (AuthPageConfig $page) => $page
+                        ->media(asset('assets/sd_masyithah3.png'))
+                        ->mediaPosition(MediaPosition::Left))
+                    ->themeToggle()
+            )
+
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
@@ -66,6 +73,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            ->databaseNotifications();
     }
 }
