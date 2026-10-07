@@ -52,4 +52,20 @@ class FeeType extends Model
     {
         return $this->hasMany(StudentFee::class);
     }
+
+    /**
+     * @return HasMany<InvoiceItem, $this>
+     */
+    public function invoiceItems(): HasMany
+    {
+        return $this->hasMany(InvoiceItem::class);
+    }
+
+    /**
+     * @return HasMany<Discount, $this>
+     */
+    public function discounts(): HasMany
+    {
+        return $this->hasMany(Discount::class);
+    }
 }

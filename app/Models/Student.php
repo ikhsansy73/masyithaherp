@@ -98,6 +98,30 @@ class Student extends Model implements HasMedia
     }
 
     /**
+     * @return HasMany<Invoice, $this>
+     */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * @return HasMany<Payment, $this>
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * @return HasMany<Discount, $this>
+     */
+    public function discounts(): HasMany
+    {
+        return $this->hasMany(Discount::class);
+    }
+
+    /**
      * The enrollment for one academic year (unique per student + year).
      */
     public function enrollmentForYear(int $academicYearId): ?StudentEnrollment

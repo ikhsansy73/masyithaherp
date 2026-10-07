@@ -243,6 +243,7 @@ I(cash_account_id, statement_date); I(status). Design: [03-accounting-core.md](0
 | status | string | `InvoiceStatus`: `draft`,`issued`,`partially_paid`,`paid`,`void`,`cancelled` |
 | total | bigint b | |
 | paid_amount | bigint b, default 0 | **derived cache** — written only by `PaymentService` |
+| fund_id | FK → funds nullable | the invoice fee fund (Phase 4 addition); carries the fee fund into payment JE lines |
 | source | string | `batch` / `manual` |
 | voided_reason | string nullable | |
 
@@ -258,6 +259,7 @@ I(student_id, status, due_date).
 | description | string | |
 | amount | bigint b | positive; sign comes from item_type |
 | revenue_account_id | FK nullable | potongan → expense account 5-1500 |
+| fund_id | FK → funds nullable | the item's fee fund (Phase 4 addition); carries into the batch JE lines |
 
 I(invoice_id).
 
