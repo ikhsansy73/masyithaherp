@@ -548,6 +548,8 @@ I(student_id, type). Single audit trail for all placement changes (no separate p
 | applicant_name | string | |
 | gender | string | `L` / `P` |
 | birth_place / birth_date | string / date | |
+| religion | string nullable | `Religion` enum — copied to the student on acceptance |
+| nik | string nullable | 16-digit, copied to the student on acceptance |
 | origin_tk | string nullable | asal TK/PAUD |
 | address | text | |
 | father_name / mother_name | string | |
