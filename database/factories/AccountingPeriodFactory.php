@@ -3,43 +3,34 @@
 namespace Database\Factories;
 
 use App\Enums\PeriodStatus;
-use App\Models\AccountingPeriod;
 use App\Models\AcademicYear;
-use Carbon\CarbonImmutable;
+use App\Models\AccountingPeriod;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
+ * Accounting periods are seeded automatically whenever an academic year is
+ * created (AcademicYearService::seedTermsAndPeriods), so creating one via
+ * this factory directly would collide with the auto-seeded rows (unique
+ * name). Do not instantiate periods through this factory — create the
+ * academic year and read its periods:
+ *
+ *   $year = AcademicYear::factory()->forStartYear(2026)->create();
+ *   $period = $year->periods()->where('name', '2026-08')->first();
+ *
+ * This factory exists only to satisfy the model's HasFactory contract.
+ *
  * @extends Factory<AccountingPeriod>
  */
 class AccountingPeriodFactory extends Factory
 {
     public function definition(): array
     {
-        $month = CarbonImmutable::create(2026, 7, 1);
-
         return [
             'academic_year_id' => AcademicYear::factory(),
-            'name' => $month->format('Y-m'),
-            'starts_at' => $month,
-            'ends_at' => $month->endOfMonth(),
+            'name' => sprintf('%04d-%02d', now()->year, now()->month),
+            'starts_at' => now()->startOfMonth(),
+            'ends_at' => now()->endOfMonth(),
             'status' => PeriodStatus::Open,
         ];
-    }
-
-    public function forMonth(int $year, int $month): static
-    {
-        return $this->state(fn (): array => [
-            'name' => sprintf('%04d-%02d', $year, $month),
-            'starts_at' => CarbonImmutable::create($year, $month, 1),
-            'ends_at' => CarbonImmutable::create($year, $month, 1)->endOfMonth(),
-        ]);
-    }
-
-    public function closed(): static
-    {
-        return $this->state(fn (): array => [
-            'status' => PeriodStatus::Closed,
-            'closed_at' => now(),
-        ]);
     }
 }
