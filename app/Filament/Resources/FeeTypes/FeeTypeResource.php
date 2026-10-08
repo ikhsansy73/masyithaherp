@@ -5,6 +5,8 @@ namespace App\Filament\Resources\FeeTypes;
 use App\Enums\FeeCategory;
 use App\Filament\Resources\FeeTypes\Pages\ManageFeeTypes;
 use App\Models\FeeType;
+use App\Models\Invoice;
+use App\Models\StudentFee;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -21,6 +23,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Auth\Access\Response;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class FeeTypeResource extends Resource
@@ -70,13 +73,42 @@ class FeeTypeResource extends Resource
             return parent::getAuthorizationResponse($action, $record);
         }
 
-        if ($record !== null && $ability === 'delete' && $record->invoiceItems()->exists()) {
-            return Response::deny();
+        if ($record !== null && $ability === 'delete' && static::hasGeneratedInvoices($record)) {
+            return Response::deny(static::deleteBlockMessage($record));
         }
 
         return auth()->user()?->can($permission)
             ? Response::allow()
             : Response::deny();
+    }
+
+    /**
+     * Whether the record already produced invoices: a fee type with invoice
+     * items, or a student fee whose student has an invoice for the same
+     * fee type and year.
+     */
+    public static function hasGeneratedInvoices(Model $record): bool
+    {
+        if ($record instanceof FeeType) {
+            return $record->invoiceItems()->exists();
+        }
+
+        if ($record instanceof StudentFee) {
+            return Invoice::query()
+                ->where('student_id', $record->student_id)
+                ->where('academic_year_id', $record->academic_year_id)
+                ->whereHas('items', fn (Builder $items): Builder => $items->where('fee_type_id', $record->fee_type_id))
+                ->exists();
+        }
+
+        return false;
+    }
+
+    public static function deleteBlockMessage(Model $record): string
+    {
+        return $record instanceof StudentFee
+            ? 'Biaya siswa sudah menghasilkan tagihan dan tidak dapat dihapus.'
+            : 'Jenis biaya sudah dipakai pada tagihan dan tidak dapat dihapus.';
     }
 
     public static function shouldRegisterNavigation(): bool

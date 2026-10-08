@@ -138,7 +138,7 @@ class DiscountResource extends Resource
                     ->label('Aktif')
                     ->badge()
                     ->formatStateUsing(fn ($state): string => $state ? 'Ya' : 'Tidak')
-                    ->color(fn ($state): array => $state ? ['success'] : ['danger']),
+                    ->color(fn ($state): string => $state ? 'success' : 'danger'),
             ])
             ->recordActions([
                 EditAction::make(),
