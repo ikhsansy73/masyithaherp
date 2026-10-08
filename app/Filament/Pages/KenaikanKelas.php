@@ -8,8 +8,12 @@ use App\Models\Classroom;
 use App\Models\Student;
 use App\Services\School\StudentMovementService;
 use BackedEnum;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -33,20 +37,26 @@ class KenaikanKelas extends Page
 
     protected string $view = 'filament.pages.kenaikan-kelas';
 
-    public ?int $classroomId = null;
+    /**
+     * Picker state (classroomId, targetYearId, movementDate, notes)
+     * held by the page schema.
+     *
+     * @var array<string, mixed>
+     */
+    public array $data = [];
 
-    public ?int $targetYearId = null;
-
-    public string $movementDate;
-
-    public ?string $notes = null;
-
-    /** @var array<int, string> */
+    /**
+     * Student id → movement decision for the grid.
+     *
+     * @var array<int, string>
+     */
     public array $decisions = [];
 
     public function mount(): void
     {
-        $this->movementDate = today()->toDateString();
+        $this->form->fill([
+            'movementDate' => today()->toDateString(),
+        ]);
     }
 
     public static function canAccess(): bool
@@ -59,7 +69,43 @@ class KenaikanKelas extends Page
         return static::canAccess();
     }
 
+    public function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Select::make('classroomId')
+                    ->label('Rombel Sumber')
+                    ->options($this->classroomOptions())
+                    ->searchable()
+                    ->preload()
+                    ->live()
+                    ->afterStateUpdated(function () {
+                        $this->data['targetYearId'] = null;
+                        $this->loadRoster();
+                    }),
+                Select::make('targetYearId')
+                    ->label('Tahun Ajaran Target')
+                    ->options(fn (): array => $this->targetYearOptions())
+                    ->searchable()
+                    ->preload()
+                    ->live()
+                    ->afterStateUpdated(fn () => $this->loadRoster()),
+                DatePicker::make('movementDate')
+                    ->label('Tanggal Mutasi')
+                    ->maxDate(today())
+                    ->live(),
+                Textarea::make('notes')
+                    ->label('Catatan (opsional)')
+                    ->rows(2)
+                    ->columnSpanFull(),
+            ])
+            ->columns(3)
+            ->statePath('data');
+    }
+
     /**
+     * Active rombel options for the picker.
+     *
      * @return array<int, string>
      */
     public function classroomOptions(): array
@@ -68,9 +114,9 @@ class KenaikanKelas extends Page
             ->with('academicYear')
             ->where('is_active', true)
             ->get()
-            ->sortBy(fn (Classroom $c): int => $c->academic_year_id)
-            ->mapWithKeys(fn (Classroom $c): array => [
-                $c->getKey() => $c->name.' — '.$c->academicYear?->name,
+            ->sortBy(fn (Classroom $classroom): int => $classroom->academic_year_id)
+            ->mapWithKeys(fn (Classroom $classroom): array => [
+                $classroom->getKey() => $classroom->name.' — '.$classroom->academicYear?->name,
             ])
             ->all();
     }
@@ -83,10 +129,6 @@ class KenaikanKelas extends Page
      */
     public function targetYearOptions(): array
     {
-        if ($this->classroomId === null) {
-            return [];
-        }
-
         $source = $this->sourceYear();
 
         if ($source === null) {
@@ -100,22 +142,50 @@ class KenaikanKelas extends Page
             ->all();
     }
 
-    public function updatedClassroomId(): void
+    /**
+     * Source rombel id currently picked in the schema (null when none).
+     */
+    public function selectedClassroomId(): ?int
     {
-        $this->targetYearId = null;
-        $this->decisions = [];
-        $this->loadRoster();
+        $value = $this->data['classroomId'] ?? null;
+
+        return filled($value) ? (int) $value : null;
     }
 
-    public function updatedTargetYearId(): void
+    /**
+     * Target academic year id currently picked in the schema.
+     */
+    public function selectedTargetYearId(): ?int
     {
-        $this->decisions = [];
-        $this->loadRoster();
+        $value = $this->data['targetYearId'] ?? null;
+
+        return filled($value) ? (int) $value : null;
     }
 
-    public function semuaNaik(): void
+    /**
+     * Movement date picked in the schema (today when empty).
+     */
+    public function selectedMovementDate(): string
     {
-        $this->decisions = array_fill_keys(array_keys($this->decisions), 'naik');
+        $value = $this->data['movementDate'] ?? null;
+
+        return filled($value) ? (string) $value : today()->toDateString();
+    }
+
+    /**
+     * Source rombel's academic year (null when nothing is picked yet).
+     */
+    public function sourceYear(): ?AcademicYear
+    {
+        $classroomId = $this->selectedClassroomId();
+
+        if ($classroomId === null) {
+            return null;
+        }
+
+        $classroom = Classroom::query()->with('academicYear')->find($classroomId);
+
+        return $classroom?->academicYear;
     }
 
     public function loadRoster(): void
@@ -128,42 +198,59 @@ class KenaikanKelas extends Page
     }
 
     /**
-     * @return Collection<int, Student>
+     * Set one student's decision from the grid buttons.
      */
-    public function roster(): Collection
+    public function setDecision(int $studentId, string $decision): void
     {
-        if ($this->classroomId === null || $this->targetYearId === null) {
-            return collect();
+        if (in_array($decision, StudentMovementService::DECISIONS, true)) {
+            $this->decisions[$studentId] = $decision;
         }
-
-        $source = $this->sourceYear();
-
-        if ($source === null) {
-            return collect();
-        }
-
-        return Student::query()
-            ->select(['students.id', 'students.nis', 'students.full_name'])
-            ->join('student_enrollments', 'student_enrollments.student_id', '=', 'students.id')
-            ->where('student_enrollments.classroom_id', $this->classroomId)
-            ->where('student_enrollments.academic_year_id', $source->getKey())
-            ->where('student_enrollments.status', 'aktif')
-            ->orderBy('students.full_name')
-            ->get();
     }
 
     /**
-     * Source rombel's academic year (null when nothing is picked yet).
+     * Set every student to naik (the common case).
      */
-    public function sourceYear(): ?AcademicYear
+    public function semuaNaik(): void
     {
-        if ($this->classroomId === null) {
-            return null;
-        }
+        $this->decisions = array_fill_keys(array_keys($this->decisions), 'naik');
+    }
 
-        $classroom = Classroom::query()->with('academicYear')->find($this->classroomId);
+    /**
+     * How many students are set to naik out of the whole roster.
+     */
+    public function naikCount(): int
+    {
+        return count(array_filter($this->decisions, fn (string $decision): bool => $decision === 'naik'));
+    }
 
-        return $classroom?->academicYear;
+    /**
+     * Short button label for a decision value.
+     */
+    public function decisionLabel(string $decision): string
+    {
+        return match ($decision) {
+            'naik' => 'Naik',
+            'tinggal_kelas' => 'Tinggal',
+            'lulus' => 'Lulus',
+            'mutasi_keluar' => 'Mutasi',
+            'keluar' => 'Keluar',
+            default => $decision,
+        };
+    }
+
+    /**
+     * Filament color for a decision button when selected.
+     */
+    public function decisionColor(string $decision): string
+    {
+        return match ($decision) {
+            'naik' => 'success',
+            'tinggal_kelas' => 'warning',
+            'lulus' => 'primary',
+            'mutasi_keluar' => 'info',
+            'keluar' => 'gray',
+            default => 'gray',
+        };
     }
 
     public function simpan(): void
@@ -174,8 +261,11 @@ class KenaikanKelas extends Page
             return;
         }
 
-        if ($this->classroomId === null || $this->targetYearId === null) {
-            Notification::make()->danger()->title('Pilih rombel dan tahun ajaran target terlebih dahulu.')->send();
+        $classroomId = $this->selectedClassroomId();
+        $targetYearId = $this->selectedTargetYearId();
+
+        if ($classroomId === null || $targetYearId === null) {
+            Notification::make()->danger()->title('Pilih rombel sumber dan tahun ajaran target terlebih dahulu.')->send();
 
             return;
         }
@@ -188,12 +278,12 @@ class KenaikanKelas extends Page
 
         try {
             $moved = app(StudentMovementService::class)->promoteClassroom(
-                from: Classroom::query()->findOrFail($this->classroomId),
-                targetYear: AcademicYear::query()->findOrFail($this->targetYearId),
+                from: Classroom::query()->findOrFail($classroomId),
+                targetYear: AcademicYear::query()->findOrFail($targetYearId),
                 decisions: $this->decisions,
                 actor: auth()->user(),
-                movementDate: Carbon::parse($this->movementDate),
-                notes: $this->notes,
+                movementDate: Carbon::parse($this->selectedMovementDate()),
+                notes: filled($this->data['notes'] ?? null) ? (string) $this->data['notes'] : null,
             );
 
             Notification::make()
@@ -210,5 +300,27 @@ class KenaikanKelas extends Page
                 ->body($exception->getMessage())
                 ->send();
         }
+    }
+
+    /**
+     * @return Collection<int, Student>
+     */
+    public function roster(): Collection
+    {
+        $classroomId = $this->selectedClassroomId();
+        $source = $this->sourceYear();
+
+        if ($classroomId === null || $source === null) {
+            return collect();
+        }
+
+        return Student::query()
+            ->select(['students.id', 'students.nis', 'students.full_name'])
+            ->join('student_enrollments', 'student_enrollments.student_id', '=', 'students.id')
+            ->where('student_enrollments.classroom_id', $classroomId)
+            ->where('student_enrollments.academic_year_id', $source->getKey())
+            ->where('student_enrollments.status', 'aktif')
+            ->orderBy('students.full_name')
+            ->get();
     }
 }
