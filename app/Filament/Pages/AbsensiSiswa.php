@@ -5,13 +5,18 @@ namespace App\Filament\Pages;
 use App\Enums\StudentAttendanceStatus;
 use App\Exceptions\SchoolException;
 use App\Models\Classroom;
+use App\Models\Student;
 use App\Models\StudentAttendance;
 use App\Services\School\StudentAttendanceService;
 use BackedEnum;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Attendance input grid (doc 06 §4): pick a rombel + date, mark every
@@ -31,9 +36,12 @@ class AbsensiSiswa extends Page
 
     protected string $view = 'filament.pages.absensi-siswa';
 
-    public ?int $classroomId = null;
-
-    public string $date;
+    /**
+     * Picker state (classroomId, date) held by the page schema.
+     *
+     * @var array<string, mixed>
+     */
+    public array $data = [];
 
     /**
      * Student id → attendance status value for the grid.
@@ -44,7 +52,9 @@ class AbsensiSiswa extends Page
 
     public function mount(): void
     {
-        $this->date = today()->toDateString();
+        $this->form->fill([
+            'date' => today()->toDateString(),
+        ]);
     }
 
     public static function canAccess(): bool
@@ -57,6 +67,26 @@ class AbsensiSiswa extends Page
         return static::canAccess();
     }
 
+    public function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Select::make('classroomId')
+                    ->label('Rombel')
+                    ->options($this->classroomOptions())
+                    ->searchable()
+                    ->preload()
+                    ->live()
+                    ->afterStateUpdated(fn () => $this->loadRoster()),
+                DatePicker::make('date')
+                    ->label('Tanggal')
+                    ->maxDate(today())
+                    ->live()
+                    ->afterStateUpdated(fn () => $this->loadRoster()),
+            ])
+            ->columns(2);
+    }
+
     /**
      * Active rombel options for the picker.
      *
@@ -65,6 +95,7 @@ class AbsensiSiswa extends Page
     public function classroomOptions(): array
     {
         return Classroom::query()
+            ->with('academicYear')
             ->where('is_active', true)
             ->orderBy('academic_year_id')
             ->orderBy('name')
@@ -75,9 +106,24 @@ class AbsensiSiswa extends Page
             ->all();
     }
 
-    public function updatedClassroomId(): void
+    /**
+     * Rombel id currently picked in the schema (null when none).
+     */
+    public function selectedClassroomId(): ?int
     {
-        $this->loadRoster();
+        $value = $this->data['classroomId'] ?? null;
+
+        return filled($value) ? (int) $value : null;
+    }
+
+    /**
+     * Attendance day picked in the schema (today when empty).
+     */
+    public function selectedDate(): string
+    {
+        $value = $this->data['date'] ?? null;
+
+        return filled($value) ? (string) $value : today()->toDateString();
     }
 
     /**
@@ -88,25 +134,37 @@ class AbsensiSiswa extends Page
     {
         $this->statuses = [];
 
-        if ($this->classroomId === null) {
+        $classroomId = $this->selectedClassroomId();
+
+        if ($classroomId === null) {
             return;
         }
 
-        $students = $this->roster();
-
         $existing = StudentAttendance::query()
-            ->where('classroom_id', $this->classroomId)
-            ->where('date', $this->date)
+            ->where('classroom_id', $classroomId)
+            ->where('date', $this->selectedDate())
             ->pluck('status', 'student_id');
 
-        foreach ($students as $student) {
-            $this->statuses[$student->id] = $existing[$student->id] ?? StudentAttendanceStatus::Hadir->value;
+        foreach ($this->roster() as $student) {
+            $current = $existing[$student->id] ?? StudentAttendanceStatus::Hadir;
+
+            $this->statuses[$student->id] = $current instanceof \BackedEnum ? $current->value : (string) $current;
         }
     }
 
-    public function updatedDate(): void
+    /**
+     * Set one student's status from the grid buttons.
+     */
+    public function setStatus(int $studentId, string $status): void
     {
-        $this->loadRoster();
+        $valid = array_map(
+            fn (StudentAttendanceStatus $case): string => $case->value,
+            StudentAttendanceStatus::cases(),
+        );
+
+        if (in_array($status, $valid, true)) {
+            $this->statuses[$studentId] = $status;
+        }
     }
 
     /**
@@ -119,9 +177,33 @@ class AbsensiSiswa extends Page
         }
     }
 
+    /**
+     * Live tally per status for the summary badges.
+     *
+     * @return array<string, int>
+     */
+    public function statusCounts(): array
+    {
+        $counts = [];
+
+        foreach (StudentAttendanceStatus::cases() as $case) {
+            $counts[$case->value] = 0;
+        }
+
+        foreach ($this->statuses as $status) {
+            if (isset($counts[$status])) {
+                $counts[$status]++;
+            }
+        }
+
+        return $counts;
+    }
+
     public function simpan(): void
     {
-        if ($this->classroomId === null) {
+        $classroomId = $this->selectedClassroomId();
+
+        if ($classroomId === null) {
             Notification::make()->danger()->title('Pilih rombel terlebih dahulu.')->send();
 
             return;
@@ -133,12 +215,12 @@ class AbsensiSiswa extends Page
             return;
         }
 
-        $classroom = Classroom::query()->findOrFail($this->classroomId);
+        $classroom = Classroom::query()->findOrFail($classroomId);
 
         try {
             $written = app(StudentAttendanceService::class)->saveForClassroom(
                 classroom: $classroom,
-                date: Carbon::parse($this->date),
+                date: Carbon::parse($this->selectedDate()),
                 statuses: $this->statuses,
                 recordedBy: auth()->user(),
             );
@@ -158,14 +240,20 @@ class AbsensiSiswa extends Page
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, \App\Models\Student>
+     * @return Collection<int, Student>
      */
-    public function roster(): \Illuminate\Support\Collection
+    public function roster(): Collection
     {
-        return \App\Models\Student::query()
+        $classroomId = $this->selectedClassroomId();
+
+        if ($classroomId === null) {
+            return collect();
+        }
+
+        return Student::query()
             ->select(['students.id', 'students.nis', 'students.full_name'])
             ->join('student_enrollments', 'student_enrollments.student_id', '=', 'students.id')
-            ->where('student_enrollments.classroom_id', $this->classroomId)
+            ->where('student_enrollments.classroom_id', $classroomId)
             ->where('student_enrollments.status', 'aktif')
             ->orderBy('students.full_name')
             ->get();
