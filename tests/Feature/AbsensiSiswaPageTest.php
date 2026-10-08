@@ -54,7 +54,6 @@ class AbsensiSiswaPageTest extends TestCase
             ->test(AbsensiSiswa::class)
             ->assertOk()
             ->set('data.classroomId', $this->classroom->getKey())
-            ->call('loadRoster')
             ->assertSee('Aisyah Putri')
             ->assertSee('Tandai semua Hadir')
             ->assertSee('Simpan Absensi');

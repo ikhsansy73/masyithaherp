@@ -84,7 +84,8 @@ class AbsensiSiswa extends Page
                     ->live()
                     ->afterStateUpdated(fn () => $this->loadRoster()),
             ])
-            ->columns(2);
+            ->columns(2)
+            ->statePath('data');
     }
 
     /**
