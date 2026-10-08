@@ -11,8 +11,7 @@ use App\Services\Billing\InvoiceBatchService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Resources\Pages\ManageRecords;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Support\Enums\MaxWidth;
+use Filament\Support\Enums\Width;
 use Illuminate\Validation\ValidationException;
 
 class ManageInvoiceBatches extends ManageRecords
@@ -27,8 +26,8 @@ class ManageInvoiceBatches extends ManageRecords
                 ->icon('heroicon-m-sparkles')
                 ->color('primary')
                 ->visible(fn (): bool => auth()->user()?->can('billing.batch.create') ?? false)
-                ->modalWidth(MaxWidth::TwoExtraLarge)
-                ->form([
+                ->modalWidth(Width::TwoExtraLarge)
+                ->schema([
                     Select::make('academic_year_id')
                         ->label('Tahun Ajaran')
                         ->options(AcademicYear::query()->orderByDesc('starts_at')->pluck('name', 'id'))
@@ -36,7 +35,7 @@ class ManageInvoiceBatches extends ManageRecords
                         ->required(),
                     Select::make('fee_type_id')
                         ->label('Jenis Biaya')
-                        ->options(fn (Get $get): array => FeeType::query()
+                        ->options(fn (): array => FeeType::query()
                             ->where('is_active', true)
                             ->where('category', FeeCategory::Bulanan->value)
                             ->orderBy('code')

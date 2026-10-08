@@ -333,7 +333,7 @@ class PpdbRegistrationResource extends Resource
             ->icon(Heroicon::OutlinedUserPlus)
             ->color('success')
             ->visible(fn (PpdbRegistration $record): bool => $record->status === PpdbStatus::Diterima)
-            ->form([
+            ->schema([
                 Select::make('classroom_id')
                     ->label('Rombel Tujuan')
                     ->options(fn (PpdbRegistration $record): array => Classroom::query()

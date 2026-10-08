@@ -140,7 +140,7 @@ class InvoiceResource extends Resource
                     ->color('danger')
                     ->requiresConfirmation()
                     ->visible(fn (Invoice $record): bool => $record->status->isPayable() && $record->paid_amount === 0)
-                    ->form([
+                    ->schema([
                         \Filament\Forms\Components\Textarea::make('reason')
                             ->label('Alasan Pembatalan')
                             ->required()

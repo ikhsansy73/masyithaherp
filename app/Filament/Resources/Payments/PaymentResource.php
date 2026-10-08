@@ -129,7 +129,7 @@ class PaymentResource extends Resource
                     ->color('danger')
                     ->requiresConfirmation()
                     ->visible(fn (Payment $record): bool => $record->amount > 0 && $record->reversed_by_payment_id === null)
-                    ->form([
+                    ->schema([
                         \Filament\Forms\Components\Textarea::make('reason')
                             ->label('Alasan Pembatalan')
                             ->required()

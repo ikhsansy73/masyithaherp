@@ -145,7 +145,7 @@ class InvoiceBatchResource extends Resource
                     ->color('danger')
                     ->requiresConfirmation()
                     ->visible(fn (InvoiceBatch $record): bool => $record->status === InvoiceBatchStatus::Issued)
-                    ->form([
+                    ->schema([
                         \Filament\Forms\Components\Textarea::make('reason')
                             ->label('Alasan Pembatalan')
                             ->required()

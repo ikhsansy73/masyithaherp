@@ -1,4 +1,8 @@
 <x-filament-panels::page>
+    @php
+        $rows = $this->rows();
+        $unallocated = $this->unallocated();
+    @endphp
     <div class="fi-section space-y-4">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div class="fi-widget-subsection rounded-xl bg-danger-50 p-4 fi-color-danger dark:fi-color-danger">

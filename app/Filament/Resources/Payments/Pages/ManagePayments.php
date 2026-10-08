@@ -12,14 +12,16 @@ use App\Models\Student;
 use App\Services\Billing\PaymentService;
 use App\Services\Billing\PaymentSource;
 use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Pages\ManageRecords;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use Filament\Support\Enums\MaxWidth;
+use Filament\Support\Enums\Width;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -35,8 +37,8 @@ class ManagePayments extends ManageRecords
                 ->icon('heroicon-m-banknotes')
                 ->color('primary')
                 ->visible(fn (): bool => auth()->user()?->can('billing.payment.create') ?? false)
-                ->modalWidth(MaxWidth::ThreeExtraLarge)
-                ->form([
+                ->modalWidth(Width::ThreeExtraLarge)
+                ->schema([
                     Select::make('student_id')
                         ->label('Siswa')
                         ->options(fn (): array => Student::query()->orderBy('full_name')->pluck('full_name', 'id')->all())
@@ -64,13 +66,12 @@ class ManagePayments extends ManageRecords
                         ->default(fn (): ?int => CashAccount::query()->where('is_default_kas', true)->value('id'))
                         ->searchable()
                         ->required(),
-                    TextInput::make('payment_date')
+                    DatePicker::make('payment_date')
                         ->label('Tanggal')
-                        ->date()
                         ->default(today())
                         ->required(),
-                    \Filament\Forms\Components\Actions::make([
-                        \Filament\Forms\Components\Actions\Action::make('isiFifo')
+                    Actions::make([
+                        Action::make('isiFifo')
                             ->label('Isi Otomatis (FIFO)')
                             ->icon('heroicon-m-sparkles')
                             ->action(function (Get $get, Set $set): void {
@@ -149,7 +150,7 @@ class ManagePayments extends ManageRecords
                         ->success()
                         ->title("Kwitansi {$payment->number} tercatat: Rp ".number_format($payment->amount, 0, ',', '.'))
                         ->actions([
-                            \Filament\Notifications\Actions\Action::make('cetak')
+                            Action::make('cetak')
                                 ->label('Cetak Kwitansi')
                                 ->url(route('billing.kwitansi', $payment), shouldOpenInNewTab: true)
                                 ->button(),
