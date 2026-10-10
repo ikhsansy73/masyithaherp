@@ -1,97 +1,172 @@
 <x-filament-panels::page>
+    {{ $this->content }}
+
     @php
         $rows = $this->rows();
         $unallocated = $this->unallocated();
+        $overdue90 = $rows->sum(fn ($row) => $row['buckets'][3]);
     @endphp
-    <div class="fi-section space-y-4">
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div class="fi-widget-subsection rounded-xl bg-danger-50 p-4 fi-color-danger dark:fi-color-danger">
-                <div class="text-sm text-danger-600 dark:text-danger-400">Total Tunggakan</div>
-                <div class="text-xl font-bold">Rp {{ number_format($rows->sum('total'), 0, ',', '.') }}</div>
-            </div>
-            <div class="fi-widget-subsection rounded-xl bg-warning-50 p-4 fi-color-warning dark:fi-color-warning">
-                <div class="text-sm text-warning-600 dark:text-warning-400">Siswa Menunggak</div>
-                <div class="text-xl font-bold">{{ $rows->count() }}</div>
-            </div>
-            <div class="fi-widget-subsection rounded-xl bg-gray-50 p-4 dark:bg-gray-900/50">
-                <div class="text-sm text-gray-500 dark:text-gray-400">Tunggakan &gt; 90 Hari</div>
-                <div class="text-xl font-bold">Rp {{ number_format($rows->sum(fn ($row) => $row['buckets'][3]), 0, ',', '.') }}</div>
-            </div>
-        </div>
 
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div>
-                <h3 class="text-sm font-semibold mb-2">Per Bucket Umur</h3>
-                <table class="fi-ta-table w-full text-sm">
-                    <thead>
-                        <tr class="text-start">
-                            <th class="px-3 py-2 text-start">Bucket</th>
-                            <th class="px-3 py-2 text-end">Total</th>
-                            <th class="px-3 py-2 text-end">Jumlah Siswa</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (['1-30 hari', '31-60 hari', '61-90 hari', '> 90 hari'] as $i => $label)
-                        <tr>
-                            <td class="px-3 py-2">{{ $label }}</td>
-                            <td class="px-3 py-2 text-end">Rp {{ number_format($rows->sum(fn ($row) => $row['buckets'][$i]), 0, ',', '.') }}</td>
-                            <td class="px-3 py-2 text-end">{{ $rows->filter(fn ($row) => $row['buckets'][$i] > 0)->count() }}</td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; margin-top: 1.5rem">
+        <x-filament::section heading="Total Tunggakan">
+            <div style="font-size: var(--text-xl); font-weight: 700; color: var(--danger-600); font-variant-numeric: tabular-nums">
+                Rp {{ number_format($rows->sum('total'), 0, ',', '.') }}
             </div>
-            <div>
-                <h3 class="text-sm font-semibold mb-2">Pembayaran Belum Dialokasikan</h3>
-                <table class="fi-ta-table w-full text-sm">
-                    <thead>
-                        <tr>
-                            <th class="px-3 py-2 text-start">Kwitansi</th>
-                            <th class="px-3 py-2 text-start">Siswa</th>
-                            <th class="px-3 py-2 text-end">Belum Dialokasikan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($unallocated as $payment)
-                        <tr>
-                            <td class="px-3 py-2 font-mono text-xs">{{ $payment->number }}</td>
-                            <td class="px-3 py-2">{{ $payment->student?->full_name }}</td>
-                            <td class="px-3 py-2 text-end">Rp {{ number_format($payment->unallocatedAmount(), 0, ',', '.') }}</td>
-                        </tr>
-                        @empty
-                        <tr><td colspan="3" class="px-3 py-2 text-gray-500">Semua pembayaran sudah dialokasikan.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        </x-filament::section>
 
-        <h3 class="text-sm font-semibold mb-2">Daftar Siswa Menunggak</h3>
-        <table class="fi-ta-table w-full text-sm">
+        <x-filament::section heading="Siswa Menunggak">
+            <div style="font-size: var(--text-xl); font-weight: 700; color: var(--warning-600); font-variant-numeric: tabular-nums">
+                {{ $rows->count() }}
+            </div>
+        </x-filament::section>
+
+        <x-filament::section heading="Tunggakan > 90 Hari">
+            <div style="font-size: var(--text-xl); font-weight: 700; font-variant-numeric: tabular-nums">
+                Rp {{ number_format($overdue90, 0, ',', '.') }}
+            </div>
+        </x-filament::section>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem; margin-top: 1.5rem">
+        <x-filament::section heading="Per Bucket Umur">
+            <table class="fi-ta-table" style="width: 100%; border-collapse: collapse">
+                <thead>
+                    <tr>
+                        <th scope="col" class="fi-ta-header-cell">Bucket</th>
+                        <th scope="col" class="fi-ta-header-cell" style="text-align: right">Total</th>
+                        <th scope="col" class="fi-ta-header-cell" style="text-align: right">Jumlah Siswa</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (['1-30 hari', '31-60 hari', '61-90 hari', '> 90 hari'] as $bucketLabel)
+                        <tr class="fi-ta-row">
+                            <td class="fi-ta-cell" style="padding-block: 0.6rem">
+                                <div class="fi-ta-cell-content">
+                                    {{ $bucketLabel }}
+                                </div>
+                            </td>
+                            <td class="fi-ta-cell" style="text-align: right">
+                                <div class="fi-ta-cell-content" style="font-variant-numeric: tabular-nums; white-space: nowrap">
+                                    {{ $rows->sum(fn ($row) => $row['buckets'][$loop->index]) !== 0
+                                        ? 'Rp '.number_format($rows->sum(fn ($row) => $row['buckets'][$loop->index]), 0, ',', '.')
+                                        : '—' }}
+                                </div>
+                            </td>
+                            <td class="fi-ta-cell" style="text-align: right">
+                                <div class="fi-ta-cell-content" style="font-variant-numeric: tabular-nums">
+                                    {{ $rows->filter(fn ($row) => $row['buckets'][$loop->index] > 0)->count() }}
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </x-filament::section>
+
+        <x-filament::section heading="Pembayaran Belum Dialokasikan">
+            <table class="fi-ta-table" style="width: 100%; border-collapse: collapse">
+                <thead>
+                    <tr>
+                        <th scope="col" class="fi-ta-header-cell">Kwitansi</th>
+                        <th scope="col" class="fi-ta-header-cell">Siswa</th>
+                        <th scope="col" class="fi-ta-header-cell" style="text-align: right">Belum Dialokasikan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($unallocated as $payment)
+                        <tr class="fi-ta-row">
+                            <td class="fi-ta-cell" style="padding-block: 0.6rem">
+                                <div class="fi-ta-cell-content" style="font-family: var(--mono-font-family); font-size: var(--text-xs); white-space: nowrap">
+                                    {{ $payment->number }}
+                                </div>
+                            </td>
+                            <td class="fi-ta-cell">
+                                <div class="fi-ta-cell-content">
+                                    {{ $payment->student?->full_name }}
+                                </div>
+                            </td>
+                            <td class="fi-ta-cell" style="text-align: right">
+                                <div class="fi-ta-cell-content" style="font-variant-numeric: tabular-nums; white-space: nowrap">
+                                    Rp {{ number_format($payment->unallocatedAmount(), 0, ',', '.') }}
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr class="fi-ta-row">
+                            <td class="fi-ta-cell" colspan="3" style="text-align: center; padding-block: 1.5rem">
+                                <div class="fi-ta-cell-content" style="color: var(--gray-500)">
+                                    Semua pembayaran sudah dialokasikan.
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </x-filament::section>
+    </div>
+
+    <x-filament::section heading="Daftar Siswa Menunggak" style="margin-top: 1.5rem">
+        <x-slot name="afterHeader">
+            <x-filament::badge :color="$rows->isEmpty() ? 'success' : 'danger'">
+                {{ $rows->count() }} siswa
+            </x-filament::badge>
+        </x-slot>
+
+        <table class="fi-ta-table" style="width: 100%; border-collapse: collapse">
             <thead>
                 <tr>
-                    <th class="px-3 py-2 text-start">#</th>
-                    <th class="px-3 py-2 text-start">Siswa</th>
-                    <th class="px-3 py-2 text-start">Kelas</th>
-                    <th class="px-3 py-2 text-end">Total</th>
-                    <th class="px-3 py-2 text-end">Telat</th>
-                    <th class="px-3 py-2">Beasiswa</th>
+                    <th scope="col" class="fi-ta-header-cell" style="width: 3rem">#</th>
+                    <th scope="col" class="fi-ta-header-cell">Siswa</th>
+                    <th scope="col" class="fi-ta-header-cell" style="width: 7rem">Kelas</th>
+                    <th scope="col" class="fi-ta-header-cell" style="text-align: right">Total</th>
+                    <th scope="col" class="fi-ta-header-cell" style="text-align: right">Telat</th>
+                    <th scope="col" class="fi-ta-header-cell" style="width: 7rem">Beasiswa</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($rows as $row)
-                <tr>
-                    <td class="px-3 py-2">{{ $loop->iteration }}</td>
-                    <td class="px-3 py-2">{{ $row['student']->full_name }}</td>
-                    <td class="px-3 py-2">{{ $row['classroom'] ?? '-' }}</td>
-                    <td class="px-3 py-2 text-end">Rp {{ number_format($row['total'], 0, ',', '.') }}</td>
-                    <td class="px-3 py-2 text-end">{{ $row['days_overdue'] }} hari</td>
-                    <td class="px-3 py-2">{{ $row['has_discount'] ? 'Ya' : '-' }}</td>
-                </tr>
+                    <tr class="fi-ta-row fi-striped">
+                        <td class="fi-ta-cell" style="padding-block: 0.6rem">
+                            <div class="fi-ta-cell-content" style="color: var(--gray-500)">
+                                {{ $loop->iteration }}
+                            </div>
+                        </td>
+                        <td class="fi-ta-cell">
+                            <div class="fi-ta-cell-content" style="font-weight: 500">
+                                {{ $row['student']->full_name }}
+                            </div>
+                        </td>
+                        <td class="fi-ta-cell">
+                            <div class="fi-ta-cell-content">
+                                {{ $row['classroom'] ?? '-' }}
+                            </div>
+                        </td>
+                        <td class="fi-ta-cell" style="text-align: right">
+                            <div class="fi-ta-cell-content" style="font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap">
+                                Rp {{ number_format($row['total'], 0, ',', '.') }}
+                            </div>
+                        </td>
+                        <td class="fi-ta-cell" style="text-align: right">
+                            <div class="fi-ta-cell-content" style="font-variant-numeric: tabular-nums; white-space: nowrap; {{ $row['days_overdue'] > 90 ? 'color: var(--danger-600); font-weight: 600;' : '' }}">
+                                {{ $row['days_overdue'] }} hari
+                            </div>
+                        </td>
+                        <td class="fi-ta-cell">
+                            <div class="fi-ta-cell-content">
+                                {{ $row['has_discount'] ? 'Ya' : '-' }}
+                            </div>
+                        </td>
+                    </tr>
                 @empty
-                <tr><td colspan="6" class="px-3 py-2 text-gray-500">Tidak ada tunggakan.</td></tr>
+                    <tr class="fi-ta-row">
+                        <td class="fi-ta-cell" colspan="6" style="text-align: center; padding-block: 2rem">
+                            <div class="fi-ta-cell-content" style="color: var(--gray-500)">
+                                Tidak ada tunggakan.
+                            </div>
+                        </td>
+                    </tr>
                 @endforelse
             </tbody>
         </table>
-    </div>
+    </x-filament::section>
 </x-filament-panels::page>
