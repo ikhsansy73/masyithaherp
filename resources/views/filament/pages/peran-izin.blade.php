@@ -1,56 +1,69 @@
 <x-filament-panels::page>
-    <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
-        <div class="fi-section-header px-4 py-3 border-b border-gray-950/5 dark:border-white/10">
-            <h3 class="text-base font-semibold text-gray-950 dark:text-white">
-                Daftar Peran
-            </h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-                {{ $roles->count() }} peran · {{ $permissionTotal }} izin terdaftar
-            </p>
-        </div>
-        <table class="w-full text-sm">
+    <x-filament::section
+        heading="Daftar Peran"
+        description="{{ $roles->count() }} peran · {{ $permissionTotal }} izin terdaftar"
+    >
+        <table class="fi-ta-table" style="width: 100%; border-collapse: collapse">
             <thead>
-                <tr class="text-left text-gray-500 dark:text-gray-400">
-                    <th class="px-4 py-2.5 font-medium">Peran</th>
-                    <th class="px-4 py-2.5 font-medium">Jumlah Izin</th>
-                    <th class="px-4 py-2.5 font-medium">Pengguna</th>
+                <tr>
+                    <th scope="col" class="fi-ta-header-cell">Peran</th>
+                    <th scope="col" class="fi-ta-header-cell" style="text-align: right">Jumlah Izin</th>
+                    <th scope="col" class="fi-ta-header-cell" style="text-align: right">Pengguna</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-950/5 dark:divide-white/10">
-                @foreach ($roles as $role)
-                    <tr>
-                        <td class="px-4 py-2.5 font-semibold text-gray-950 dark:text-white">
-                            {{ \Illuminate\Support\Str::headline($role->name) }}
+            <tbody>
+                @forelse ($roles as $role)
+                    <tr class="fi-ta-row fi-striped">
+                        <td class="fi-ta-cell" style="padding-block: 0.6rem">
+                            <div class="fi-ta-cell-content" style="font-weight: 600">
+                                {{ \Illuminate\Support\Str::headline($role->name) }}
+                            </div>
                         </td>
-                        <td class="px-4 py-2.5 text-gray-600 dark:text-gray-300">
-                            {{ $role->permissions_count }}
+                        <td class="fi-ta-cell" style="text-align: right">
+                            <div class="fi-ta-cell-content" style="font-variant-numeric: tabular-nums">
+                                {{ $role->permissions_count }}
+                            </div>
                         </td>
-                        <td class="px-4 py-2.5 text-gray-600 dark:text-gray-300">
-                            {{ $role->users_count }}
+                        <td class="fi-ta-cell" style="text-align: right">
+                            <div class="fi-ta-cell-content" style="font-variant-numeric: tabular-nums">
+                                {{ $role->users_count }}
+                            </div>
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr class="fi-ta-row">
+                        <td class="fi-ta-cell" colspan="3" style="text-align: center; padding-block: 2rem">
+                            <div class="fi-ta-cell-content" style="color: var(--gray-500)">
+                                Belum ada peran terdaftar.
+                            </div>
+                        </td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
-    </div>
+    </x-filament::section>
 
-    <div class="mt-4 grid gap-4 md:grid-cols-2">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem; margin-top: 1.5rem">
         @foreach ($roles as $role)
-            <details class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
-                <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-950 select-none dark:text-white">
-                    {{ \Illuminate\Support\Str::headline($role->name) }}
-                    <span class="ml-1 font-normal text-gray-500 dark:text-gray-400">
-                        ({{ $role->permissions_count }} izin)
-                    </span>
-                </summary>
-                <div class="flex flex-wrap gap-1.5 px-4 pb-4">
+            <x-filament::section
+                :heading="\Illuminate\Support\Str::headline($role->name)"
+                collapsible
+                collapsed
+            >
+                <x-slot name="afterHeader">
+                    <x-filament::badge color="gray">
+                        {{ $role->permissions_count }} izin
+                    </x-filament::badge>
+                </x-slot>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 0.375rem">
                     @foreach ($role->permissions->sortBy('name') as $permission)
-                        <span class="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                        <x-filament::badge color="gray">
                             {{ $permission->name }}
-                        </span>
+                        </x-filament::badge>
                     @endforeach
                 </div>
-            </details>
+            </x-filament::section>
         @endforeach
     </div>
 </x-filament-panels::page>
