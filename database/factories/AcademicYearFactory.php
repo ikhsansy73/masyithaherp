@@ -12,12 +12,18 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class AcademicYearFactory extends Factory
 {
+    private static int $sequence = 0;
+
     public function definition(): array
     {
+        self::$sequence++;
+
+        $startYear = 2025 + self::$sequence;
+
         return [
-            'name' => '2026/2027',
-            'starts_at' => CarbonImmutable::create(2026, 7, 1),
-            'ends_at' => CarbonImmutable::create(2027, 6, 30),
+            'name' => $startYear.'/'.($startYear + 1),
+            'starts_at' => CarbonImmutable::create($startYear, 7, 1),
+            'ends_at' => CarbonImmutable::create($startYear + 1, 6, 30),
             'status' => AcademicYearStatus::Planned,
             'is_default' => false,
         ];
