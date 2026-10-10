@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UserSeeder::class,
             SubjectSeeder::class,
+            AssetCategorySeeder::class,
         ]);
 
         if (AcademicYear::query()->doesntExist()) {

@@ -34,4 +34,12 @@ class Location extends Model
     {
         return $this->hasMany(Location::class, 'parent_id');
     }
+
+    /**
+     * @return HasMany<Asset, $this>
+     */
+    public function assets(): HasMany
+    {
+        return $this->hasMany(Asset::class);
+    }
 }
