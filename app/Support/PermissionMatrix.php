@@ -46,10 +46,12 @@ class PermissionMatrix
         static::crud($matrix, 'hr.employee', full: ['operator_tu'], view: ['kepala_sekolah', 'bendahara', 'guru']);
         static::crud($matrix, 'hr.attendance', full: ['operator_tu'], view: ['kepala_sekolah', 'bendahara']);
         static::crud($matrix, 'hr.leave', full: ['operator_tu'], view: ['kepala_sekolah', 'bendahara']);
+        static::action($matrix, 'hr.leave.approve', ['kepala_sekolah']);
+        static::crud($matrix, 'payroll.component', full: ['bendahara'], view: ['kepala_sekolah']);
         static::action($matrix, 'payroll.calculate', ['bendahara']);
         static::action($matrix, 'payroll.approve', ['kepala_sekolah']);
         static::action($matrix, 'payroll.pay', ['bendahara']);
-        static::action($matrix, 'payroll.view', ['kepala_sekolah']);
+        static::action($matrix, 'payroll.view', ['kepala_sekolah', 'bendahara']);
 
         // --- Siswa, PPDB & Akademik ---
         static::crud($matrix, 'academics.year', full: ['operator_tu'], view: ['kepala_sekolah', 'bendahara', 'guru', 'wali_kelas']);

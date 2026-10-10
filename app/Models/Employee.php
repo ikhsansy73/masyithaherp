@@ -90,6 +90,40 @@ class Employee extends Model
     }
 
     /**
+     * Per-employee salary configuration (amount/rate per component).
+     *
+     * @return HasMany<EmployeeSalaryComponent, $this>
+     */
+    public function salaryComponents(): HasMany
+    {
+        return $this->hasMany(EmployeeSalaryComponent::class);
+    }
+
+    /**
+     * @return HasMany<Payslip, $this>
+     */
+    public function payslips(): HasMany
+    {
+        return $this->hasMany(Payslip::class);
+    }
+
+    /**
+     * @return HasMany<EmployeeAttendance, $this>
+     */
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(EmployeeAttendance::class);
+    }
+
+    /**
+     * @return HasMany<Leave, $this>
+     */
+    public function leaves(): HasMany
+    {
+        return $this->hasMany(Leave::class);
+    }
+
+    /**
      * @param  Builder<self>  $query
      * @return Builder<self>
      */

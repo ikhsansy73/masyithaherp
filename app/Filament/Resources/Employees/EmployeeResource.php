@@ -206,6 +206,7 @@ class EmployeeResource extends Resource
                 TrashedFilter::make(),
             ])
             ->recordActions([
+                \Filament\Actions\ViewAction::make(),
                 EditAction::make(),
                 DeleteAction::make(),
                 ForceDeleteAction::make(),
@@ -220,10 +221,18 @@ class EmployeeResource extends Resource
             ]);
     }
 
+    public static function getRelations(): array
+    {
+        return [
+            RelationManagers\SalaryComponentsRelationManager::class,
+        ];
+    }
+
     public static function getPages(): array
     {
         return [
             'index' => ManageEmployees::route('/'),
+            'view' => Pages\ViewEmployee::route('/{record}'),
         ];
     }
 

@@ -10,9 +10,9 @@ class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database. One seeder per table:
-     * funds → accounts (COA) → cash accounts → fee types → permissions →
-     * roles → users, then the default academic year (its model event
-     * auto-seeds terms and accounting periods).
+     * funds → accounts (COA) → cash accounts → fee types → salary
+     * components → permissions → roles → users, then the default academic
+     * year (its model event auto-seeds terms and accounting periods).
      */
     public function run(): void
     {
@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             AccountSeeder::class,
             CashAccountSeeder::class,
             FeeTypeSeeder::class,
+            SalaryComponentSeeder::class,
             PermissionSeeder::class,
             RoleSeeder::class,
             UserSeeder::class,

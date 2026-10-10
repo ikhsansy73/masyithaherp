@@ -369,7 +369,7 @@ allocations only against `issued`/`partially_paid` invoices.
 | default_amount | bigint b | fixed rupiah, or percent ×100 stored as e.g. 100 = 1% (see 05) |
 | percent_rate | decimal(5,4) nullable | for percent_base components (0.0100 = 1%) |
 | is_employer | boolean | employer-paid BPJS (earnings to employee's slip, cost to school) |
-| gl_account_id | FK → accounts | expense account for earnings (5-11xx) |
+| gl_account_id | FK → accounts nullable | expense account for earnings (5-11xx); unused for potongan |
 | liability_account_id | FK → accounts nullable | utang account for deductions (2-11xx/2-12xx/2-13xx) |
 | is_active | boolean | |
 
