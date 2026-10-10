@@ -11,7 +11,11 @@ class TunggakanTeratasWidget extends Widget
 
     protected int|string|array $columnSpan = 'full';
 
-    public function canAccess(): bool
+    protected static ?int $sort = 1;
+
+    protected static bool $isLazy = false;
+
+    public static function canView(): bool
     {
         return auth()->user()?->can('billing.arrears.view') ?? false;
     }
