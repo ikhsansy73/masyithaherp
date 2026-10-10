@@ -3,24 +3,33 @@
 namespace App\Filament\Resources\Assets;
 
 use App\Enums\AssetStatus;
+use App\Enums\DisposalMethod;
 use App\Exceptions\AccountingException;
 use App\Filament\Resources\Assets\Pages\ManageAssets;
 use App\Filament\Resources\Assets\Pages\ViewAsset;
 use App\Models\Asset;
+use App\Models\CashAccount;
+use App\Services\Assets\AssetDisposalService;
 use App\Services\Assets\AssetService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 class AssetResource extends Resource
@@ -94,6 +103,71 @@ class AssetResource extends Resource
                 Notification::make()
                     ->success()
                     ->title("Aset diduplikat menjadi {$duplicate->code}")
+                    ->send();
+            });
+    }
+
+    /**
+     * Penghapusan aset (doc 07 §3): dijual posts rule #14, dihapuskan/
+     * hilang posts rule #15; hilang requires an opname finding.
+     */
+    public static function disposalAction(): Action
+    {
+        return Action::make('hapus')
+            ->label('Penghapusan')
+            ->icon('heroicon-m-trash')
+            ->color('danger')
+            ->visible(fn (Asset $record): bool => $record->status === AssetStatus::Aktif
+                && (auth()->user()?->can('assets.disposal') ?? false))
+            ->modalWidth(Width::TwoExtraLarge)
+            ->schema([
+                DatePicker::make('disposal_date')
+                    ->label('Tanggal Penghapusan')
+                    ->default(today())
+                    ->required(),
+                Select::make('method')
+                    ->label('Metode')
+                    ->options(collect(DisposalMethod::cases())->mapWithKeys(
+                        fn (DisposalMethod $method): array => [$method->value => $method->label()],
+                    )->all())
+                    ->default(DisposalMethod::Dihapuskan->value)
+                    ->live()
+                    ->required(),
+                TextInput::make('proceeds')
+                    ->label('Hasil Penjualan (Rp)')
+                    ->numeric()
+                    ->minValue(1)
+                    ->prefix('Rp')
+                    ->visible(fn (Get $get): bool => $get('method') === 'dijual')
+                    ->required(fn (Get $get): bool => $get('method') === 'dijual'),
+                Select::make('cash_account_id')
+                    ->label('Kas/Bank Penerima')
+                    ->options(fn (): array => CashAccount::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())
+                    ->searchable()
+                    ->visible(fn (Get $get): bool => $get('method') === 'dijual')
+                    ->required(fn (Get $get): bool => $get('method') === 'dijual'),
+            ])
+            ->modalDescription('Penghapusan memposting jurnal nilai buku aset (rule #14/#15) dan tidak dapat dibatalkan dari halaman aset.')
+            ->action(function (Asset $record, array $data): void {
+                try {
+                    app(AssetDisposalService::class)->dispose(
+                        $record,
+                        Carbon::parse($data['disposal_date']),
+                        DisposalMethod::from($data['method']),
+                        filled($data['proceeds'] ?? null) ? (int) $data['proceeds'] : null,
+                        filled($data['cash_account_id'] ?? null) ? (int) $data['cash_account_id'] : null,
+                        (int) auth()->id(),
+                    );
+                } catch (AccountingException $exception) {
+                    throw ValidationException::withMessages([
+                        'method' => $exception->getMessage(),
+                    ]);
+                }
+
+                Notification::make()
+                    ->success()
+                    ->title("Aset {$record->code} telah dihapuskan.")
+                    ->body('Jurnal penghapusan telah dibukukan.')
                     ->send();
             });
     }
@@ -209,6 +283,7 @@ class AssetResource extends Resource
             ->recordActions([
                 ViewAction::make(),
                 self::duplicateAction(),
+                self::disposalAction(),
             ])
             ->filters([
                 //

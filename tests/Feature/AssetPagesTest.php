@@ -52,6 +52,7 @@ class AssetPagesTest extends TestCase
             '/admin/assets/'.$asset->getKey(),
             '/admin/asset-categories',
             '/admin/locations',
+            '/admin/asset-maintenances',
         ] as $url) {
             $this->actingAs($admin)->get($url)->assertOk();
         }
@@ -66,6 +67,7 @@ class AssetPagesTest extends TestCase
             '/admin/assets',
             '/admin/asset-categories',
             '/admin/locations',
+            '/admin/asset-maintenances',
         ] as $url) {
             $this->actingAs($operatorTu)->get($url)->assertOk();
         }
@@ -80,6 +82,7 @@ class AssetPagesTest extends TestCase
             '/admin/assets',
             '/admin/asset-categories',
             '/admin/locations',
+            '/admin/asset-maintenances',
         ] as $url) {
             $this->actingAs($guru)->get($url)->assertForbidden();
         }

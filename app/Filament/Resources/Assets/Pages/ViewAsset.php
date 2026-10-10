@@ -13,6 +13,7 @@ class ViewAsset extends ViewRecord
     {
         return [
             AssetResource::duplicateAction(),
+            AssetResource::disposalAction(),
         ];
     }
 
