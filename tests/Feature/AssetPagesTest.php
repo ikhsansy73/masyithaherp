@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\Assets\Pages\ManageAssets;
 use App\Models\AcademicYear;
 use App\Models\Asset;
 use App\Models\Fund;
@@ -12,6 +13,7 @@ use Database\Seeders\FundSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class AssetPagesTest extends TestCase
@@ -99,5 +101,16 @@ class AssetPagesTest extends TestCase
         ] as $url) {
             $this->actingAs($guru)->get($url)->assertForbidden();
         }
+    }
+
+    public function test_catat_aset_form_mounts_and_lists_employee_names(): void
+    {
+        $operatorTu = User::factory()->create();
+        $operatorTu->assignRole('operator_tu');
+
+        Livewire::actingAs($operatorTu)
+            ->test(ManageAssets::class)
+            ->mountAction('catatAset')
+            ->assertSuccessful();
     }
 }

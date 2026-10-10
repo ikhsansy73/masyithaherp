@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\JurnalMengajar\Pages\ManageJurnalMengajar;
 use App\Models\Classroom;
 use App\Models\Employee;
 use App\Models\Subject;
@@ -10,6 +11,7 @@ use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class JurnalMengajarPageTest extends TestCase
@@ -90,5 +92,15 @@ class JurnalMengajarPageTest extends TestCase
         $bendahara->assignRole('bendahara');
 
         $this->actingAs($bendahara)->get('/admin/jurnal-mengajar')->assertForbidden();
+    }
+
+    public function test_create_form_mounts_and_lists_employee_names(): void
+    {
+        $guru = $this->staffUser('guru');
+
+        Livewire::actingAs($guru)
+            ->test(ManageJurnalMengajar::class)
+            ->mountAction('create')
+            ->assertSuccessful();
     }
 }

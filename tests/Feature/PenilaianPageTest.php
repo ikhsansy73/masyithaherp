@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\Penilaian\Pages\ManagePenilaian;
 use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\Classroom;
@@ -10,6 +11,7 @@ use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class PenilaianPageTest extends TestCase
@@ -85,5 +87,15 @@ class PenilaianPageTest extends TestCase
         $bendahara = $this->staffUser('bendahara');
 
         $this->actingAs($bendahara)->get('/admin/penilaian')->assertForbidden();
+    }
+
+    public function test_create_form_mounts_and_lists_employee_names(): void
+    {
+        $guru = $this->staffUser('guru');
+
+        Livewire::actingAs($guru)
+            ->test(ManagePenilaian::class)
+            ->mountAction('create')
+            ->assertSuccessful();
     }
 }

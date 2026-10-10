@@ -171,8 +171,8 @@ class FeeTypeResource extends Resource
                     ->formatStateUsing(fn (FeeCategory $state): string => $state->label())
                     ->color(fn (FeeCategory $state): array => match ($state) {
                         FeeCategory::Bulanan => Color::Blue,
-                        FeeCategory::Sekali => Color::Amber,
-                        FeeCategory::Opsional => Color::Gray,
+                        FeeCategory::Tahunan => Color::Amber,
+                        FeeCategory::Insidental => Color::Gray,
                     }),
                 TextColumn::make('revenueAccount.code')
                     ->label('Akun Pendapatan'),

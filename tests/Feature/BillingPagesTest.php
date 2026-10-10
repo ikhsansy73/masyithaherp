@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\FeeCategory;
 use App\Enums\InvoiceItemType;
 use App\Filament\Resources\FeeTypes\FeeTypeResource;
 use App\Models\AcademicYear;
@@ -107,6 +108,16 @@ class BillingPagesTest extends TestCase
         ] as $url) {
             $this->actingAs($admin)->get($url)->assertOk();
         }
+    }
+
+    public function test_fee_type_table_renders_every_category_badge(): void
+    {
+        $admin = $this->superAdmin();
+
+        FeeType::factory()->create(['category' => FeeCategory::Tahunan]);
+        FeeType::factory()->create(['category' => FeeCategory::Insidental]);
+
+        $this->actingAs($admin)->get('/admin/fee-types')->assertOk();
     }
 
     public function test_delete_guard_tracks_each_model_usage(): void

@@ -91,7 +91,7 @@ class ManageAssets extends ManageRecords
                         ->required(),
                     Select::make('custodian_id')
                         ->label('Penanggung Jawab')
-                        ->options(fn (): array => Employee::query()->orderBy('full_name')->pluck('full_name', 'id')->all())
+                        ->options(fn (): array => Employee::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->searchable()
                         ->preload(),
                     TextInput::make('brand_model')
