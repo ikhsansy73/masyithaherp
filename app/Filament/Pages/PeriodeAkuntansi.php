@@ -6,6 +6,7 @@ use App\Enums\PeriodStatus;
 use App\Exceptions\AccountingException;
 use App\Models\AccountingPeriod;
 use App\Services\Accounting\AccountingPeriodService;
+use App\Services\Assets\DepreciationService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -81,6 +82,7 @@ class PeriodeAkuntansi extends Page implements \Filament\Tables\Contracts\HasTab
             ->recordActions([
                 self::tutupBukuAction(),
                 self::bukaKembaliAction(),
+                self::jalankanPenyusutanAction(),
             ])
             ->paginated(false);
     }
@@ -144,6 +146,49 @@ class PeriodeAkuntansi extends Page implements \Filament\Tables\Contracts\HasTab
                     Notification::make()
                         ->danger()
                         ->title('Periode tidak dapat dibuka.')
+                        ->body($exception->getMessage())
+                        ->send();
+                }
+            });
+    }
+
+    /**
+     * Jalankan Penyusutan (doc 07 §2): straight-line monthly run for this
+     * period — idempotent, one JE #13 per run.
+     */
+    private static function jalankanPenyusutanAction(): Action
+    {
+        return Action::make('jalankan-penyusutan')
+            ->label('Jalankan Penyusutan')
+            ->icon('heroicon-m-calculator')
+            ->color('info')
+            ->requiresConfirmation()
+            ->modalDescription('Jalankan penyusutan bulanan untuk periode ini? Aset yang sudah disusutkan untuk periode ini akan dilewati.')
+            ->visible(fn (AccountingPeriod $record): bool => $record->status === PeriodStatus::Open
+                && (auth()->user()?->can('assets.depreciation.run') ?? false))
+            ->action(function (AccountingPeriod $record): void {
+                try {
+                    $result = app(DepreciationService::class)->run($record, (int) auth()->id());
+
+                    if ($result->count === 0) {
+                        Notification::make()
+                            ->warning()
+                            ->title('Tidak ada aset yang disusutkan.')
+                            ->body('Semua aset aktif sudah disusutkan untuk periode ini, atau tidak ada aset yang layak disusutkan.')
+                            ->send();
+
+                        return;
+                    }
+
+                    Notification::make()
+                        ->success()
+                        ->title("{$result->count} aset disusutkan.")
+                        ->body("Jurnal {$result->entry->number} telah dibukukan (Dr 5-1300 / Cr 1-2900).")
+                        ->send();
+                } catch (AccountingException $exception) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Penyusutan gagal dijalankan.')
                         ->body($exception->getMessage())
                         ->send();
                 }
