@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AcademicYear;
 use App\Models\Asset;
 use App\Models\Fund;
+use App\Models\InventoryItem;
 use App\Models\User;
 use Database\Seeders\AccountSeeder;
 use Database\Seeders\FundSeeder;
@@ -47,6 +48,8 @@ class AssetPagesTest extends TestCase
             'fund_id' => Fund::query()->firstOrFail()->getKey(),
         ]);
 
+        $inventoryItem = InventoryItem::factory()->create();
+
         foreach ([
             '/admin/assets',
             '/admin/assets/'.$asset->getKey(),
@@ -54,6 +57,8 @@ class AssetPagesTest extends TestCase
             '/admin/locations',
             '/admin/asset-maintenances',
             '/admin/asset-opnames',
+            '/admin/inventory-items',
+            '/admin/inventory-items/'.$inventoryItem->getKey(),
         ] as $url) {
             $this->actingAs($admin)->get($url)->assertOk();
         }
@@ -64,12 +69,16 @@ class AssetPagesTest extends TestCase
         $operatorTu = User::factory()->create();
         $operatorTu->assignRole('operator_tu');
 
+        $inventoryItem = InventoryItem::factory()->create();
+
         foreach ([
             '/admin/assets',
             '/admin/asset-categories',
             '/admin/locations',
             '/admin/asset-maintenances',
             '/admin/asset-opnames',
+            '/admin/inventory-items',
+            '/admin/inventory-items/'.$inventoryItem->getKey(),
         ] as $url) {
             $this->actingAs($operatorTu)->get($url)->assertOk();
         }
@@ -86,6 +95,7 @@ class AssetPagesTest extends TestCase
             '/admin/locations',
             '/admin/asset-maintenances',
             '/admin/asset-opnames',
+            '/admin/inventory-items',
         ] as $url) {
             $this->actingAs($guru)->get($url)->assertForbidden();
         }
