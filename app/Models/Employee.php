@@ -21,6 +21,7 @@ class Employee extends Model
         'employee_no',
         'name',
         'nik',
+        'nip',
         'gender',
         'birth_place',
         'birth_date',

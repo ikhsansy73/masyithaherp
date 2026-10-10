@@ -89,6 +89,7 @@ class RaporResource extends Resource
             ])
             ->recordActions([
                 ViewAction::make(),
+                static::printAction(),
                 static::submitAction(),
                 static::approveAction(),
                 static::requestRevisionAction(),
@@ -261,6 +262,80 @@ class RaporResource extends Resource
             ->action(function (Model $record): void {
                 static::runWorkflow('publish', $record, 'Rapor diterbitkan');
             });
+    }
+
+    /**
+     * Open the A4 rapor PDF for one student in a new tab.
+     */
+    public static function printAction(): Action
+    {
+        return Action::make('cetakPdf')
+            ->label('Cetak PDF')
+            ->icon('heroicon-o-printer')
+            ->color('gray')
+            ->url(fn (Model $record): string => route('rapor.pdf', ['card' => $record]), shouldOpenInNewTab: true);
+    }
+
+    /**
+     * Header action: print every rapor of a rombel × semester as one
+     * batched A4 PDF.
+     */
+    public static function printBatchAction(): Action
+    {
+        return Action::make('cetakPerKelas')
+            ->label('Cetak Per Kelas')
+            ->icon('heroicon-o-printer')
+            ->color('gray')
+            ->schema([
+                Select::make('classroom_id')
+                    ->label('Rombel')
+                    ->options(fn (): array => static::classroomPickerOptions())
+                    ->searchable()
+                    ->preload()
+                    ->required(),
+                Select::make('academic_term_id')
+                    ->label('Semester')
+                    ->options(fn (): array => static::termPickerOptions())
+                    ->searchable()
+                    ->preload()
+                    ->required(),
+            ])
+            ->action(fn (array $data) => redirect()->to(route('rapor.pdf.class', [
+                'classroom' => $data['classroom_id'],
+                'term' => $data['academic_term_id'],
+            ])));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function classroomPickerOptions(): array
+    {
+        return Classroom::query()
+            ->with('academicYear')
+            ->where('is_active', true)
+            ->visibleToStaff(auth()->user())
+            ->orderBy('name')
+            ->get()
+            ->mapWithKeys(fn (Classroom $classroom): array => [
+                $classroom->getKey() => $classroom->name.' — '.$classroom->academicYear?->name,
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function termPickerOptions(): array
+    {
+        return AcademicTerm::query()
+            ->with('academicYear')
+            ->orderByDesc('academic_year_id')
+            ->get()
+            ->mapWithKeys(fn (AcademicTerm $term): array => [
+                $term->getKey() => $term->name.' — '.$term->academicYear?->name,
+            ])
+            ->all();
     }
 
     /**

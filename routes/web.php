@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BillingKwitansiController;
 use App\Http\Controllers\PayrollSlipController;
+use App\Http\Controllers\RaporPdfController;
 use App\Http\Controllers\TunggakanPdfController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,4 +19,10 @@ Route::middleware(['auth'])->group(function (): void {
 
     Route::get('/billing/daftar-tunggakan', TunggakanPdfController::class)
         ->name('billing.daftar-tunggakan');
+
+    Route::get('/rapor/{card}/pdf', [RaporPdfController::class, 'show'])
+        ->name('rapor.pdf');
+
+    Route::get('/rapor/cetak-kelas/{classroom}/{term}', [RaporPdfController::class, 'batch'])
+        ->name('rapor.pdf.class');
 });

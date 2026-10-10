@@ -18,6 +18,7 @@ class EmployeeFactory extends Factory
             'employee_no' => 'EMP'.str_pad((string) (Employee::query()->max('id') + 1), 4, '0', STR_PAD_LEFT),
             'name' => fake()->name(),
             'nik' => fake()->unique()->numerify('################'),
+            'nip' => fake()->unique()->numerify('##################'),
             'position' => 'Guru Kelas',
             'employment_status' => EmploymentStatus::Bsm,
             'gender' => fake()->randomElement([Gender::L, Gender::P]),

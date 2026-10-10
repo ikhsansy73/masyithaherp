@@ -8,6 +8,7 @@ use App\Models\AssessmentScore;
 use App\Models\Classroom;
 use App\Models\ClassSubjectTeacher;
 use App\Models\Employee;
+use App\Models\Guardian;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\User;
@@ -17,8 +18,11 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/** Render smoke for the Rapor resource pages and row scoping. */
-class RaporPageTest extends TestCase
+/**
+ * Rapor PDF printing (doc 06 §7): per student and per class batch, with
+ * staff row scoping and guardian-only-published access.
+ */
+class RaporPdfTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -45,22 +49,6 @@ class RaporPageTest extends TestCase
             'classroom_id' => $this->classroom->getKey(),
             'grade_level' => $this->classroom->grade_level,
             'status' => 'aktif',
-        ]);
-    }
-
-    /**
-     * One scored assessment so setUp data is realistic for all tests.
-     */
-    private function makeScoredAssessment(): void
-    {
-        $assessment = Assessment::factory()->create([
-            'classroom_id' => $this->classroom->getKey(),
-            'academic_term_id' => $this->year->terms()->first()->getKey(),
-        ]);
-        AssessmentScore::query()->create([
-            'assessment_id' => $assessment->getKey(),
-            'student_id' => $this->student->getKey(),
-            'score' => 82,
         ]);
     }
 
@@ -98,57 +86,63 @@ class RaporPageTest extends TestCase
         app(ReportCardService::class)->generate($this->year->terms()->first(), $this->classroom);
     }
 
-    public function test_kepala_sekolah_sees_generated_cards(): void
-    {
-        $this->generateCard();
-        $kepsek = $this->staffUser('kepala_sekolah');
-
-        $this->actingAs($kepsek)->get('/admin/rapor')
-            ->assertOk()
-            ->assertSee($this->student->full_name);
-    }
-
-    public function test_wali_kelas_sees_own_classroom_cards(): void
-    {
-        $this->generateCard();
-        $wali = $this->staffUser('wali_kelas');
-        $this->classroom->update(['homeroom_teacher_id' => $wali->employee->getKey()]);
-
-        $this->actingAs($wali)->get('/admin/rapor')
-            ->assertOk()
-            ->assertSee($this->student->full_name);
-    }
-
-    public function test_guru_sees_taught_classroom_cards(): void
-    {
-        $guru = $this->staffUser('guru');
-        ClassSubjectTeacher::factory()->create([
-            'classroom_id' => $this->classroom->getKey(),
-            'teacher_id' => $guru->employee->getKey(),
-        ]);
-        $this->generateCard();
-
-        $this->actingAs($guru)->get('/admin/rapor')
-            ->assertOk()
-            ->assertSee($this->student->full_name);
-    }
-
-    public function test_kepala_sekolah_opens_rapor_view_page(): void
+    public function test_kepala_sekolah_prints_single_rapor_pdf(): void
     {
         $this->generateCard();
         $kepsek = $this->staffUser('kepala_sekolah');
         $card = $this->student->reportCards()->firstOrFail();
 
-        $this->actingAs($kepsek)->get('/admin/rapor/'.$card->getKey())
+        $this->actingAs($kepsek)
+            ->get("/rapor/{$card->getKey()}/pdf")
             ->assertOk()
-            ->assertSee($this->student->full_name)
-            ->assertSee('Nilai Per Mata Pelajaran');
+            ->assertHeader('content-type', 'application/pdf');
     }
 
-    public function test_bendahara_cannot_access_page(): void
+    public function test_kepala_sekolah_prints_class_batch_pdf(): void
     {
-        $bendahara = $this->staffUser('bendahara');
+        $this->generateCard();
+        $kepsek = $this->staffUser('kepala_sekolah');
 
-        $this->actingAs($bendahara)->get('/admin/rapor')->assertForbidden();
+        $this->actingAs($kepsek)
+            ->get('/rapor/cetak-kelas/'.$this->classroom->getKey().'/'.$this->year->terms()->first()->getKey())
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_guardian_prints_published_rapor_only(): void
+    {
+        $service = app(ReportCardService::class);
+        $this->generateCard();
+        $card = $this->student->reportCards()->firstOrFail();
+
+        $guardianUser = User::factory()->create();
+        $guardianUser->assignRole('wali_murid');
+        Guardian::factory()->create([
+            'student_id' => $this->student->getKey(),
+            'user_id' => $guardianUser->getKey(),
+        ]);
+
+        $route = "/rapor/{$card->getKey()}/pdf";
+
+        $this->actingAs($guardianUser)->get($route)->assertForbidden();
+
+        $service->submit($card, $this->staffUser('wali_kelas'));
+        $kepsek = $this->staffUser('kepala_sekolah');
+        $service->approve($card, $kepsek);
+        $service->publish($card, $kepsek);
+
+        $this->actingAs($guardianUser)
+            ->get($route)
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_guru_outside_the_classroom_cannot_print(): void
+    {
+        $this->generateCard();
+        $outsider = $this->staffUser('guru');
+        $card = $this->student->reportCards()->firstOrFail();
+
+        $this->actingAs($outsider)->get("/rapor/{$card->getKey()}/pdf")->assertForbidden();
     }
 }

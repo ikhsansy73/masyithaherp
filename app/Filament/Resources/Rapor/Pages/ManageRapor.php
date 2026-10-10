@@ -13,6 +13,7 @@ class ManageRapor extends ManageRecords
     {
         return [
             RaporResource::generateAction(),
+            RaporResource::printBatchAction(),
         ];
     }
 }

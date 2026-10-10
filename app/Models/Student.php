@@ -90,6 +90,14 @@ class Student extends Model implements HasMedia
     }
 
     /**
+     * @return HasMany<ReportCard, $this>
+     */
+    public function reportCards(): HasMany
+    {
+        return $this->hasMany(ReportCard::class);
+    }
+
+    /**
      * @return HasMany<StudentFee, $this>
      */
     public function fees(): HasMany
